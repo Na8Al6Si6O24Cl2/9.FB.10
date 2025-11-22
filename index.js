@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-const VALID_API_KEY = 'SuperSusSkibidiSigma1x0x2x3x1x5x' + Math.random().toString(36).substring(7);
+const VALID_API_KEY = 'SuperSusSkibidiSigma1x0x2x3x1x5x';
 
 app.use((req, res, next) => {
     const apiKey = req.headers['x-api-key'] || req.headers['authorization'];
@@ -102,4 +102,3 @@ setInterval(() => {
         }
     });
 }, 10 * 60 * 1000);
-
