@@ -2,17 +2,20 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+const VALID_API_KEY = 'your-secret-api-key-here-' + Math.random().toString(36).substring(7);
+
 app.use((req, res, next) => {
-    const userAgent = req.headers['user-agent'] || '';
+    const apiKey = req.headers['x-api-key'] || req.headers['authorization'];
     
-    if (userAgent.includes('Roblox')) {
+    if (apiKey === VALID_API_KEY) {
         return next();
     }
     
     return res.status(403).end();
 });
+
+app.use(cors());
+app.use(express.json());
 
 const pendingScripts = new Map();
 
@@ -33,8 +36,6 @@ app.post('/api/execute', (req, res) => {
         id: Date.now()
     });
     
-    console.log(`[${userId}] 스크립트 수신 (길이: ${script.length})`);
-    
     res.json({ 
         success: true, 
         message: '스크립트가 큐에 추가되었습니다',
@@ -50,9 +51,7 @@ app.get('/api/get-scripts/:userId', (req, res) => {
     }
     
     const scripts = pendingScripts.get(userId);
-    pendingScripts.set(userId, []); // 큐 비우기
-    
-    console.log(`[${userId}] ${scripts.length}개 스크립트 전송`);
+    pendingScripts.set(userId, []);
     
     res.json({ 
         scripts: scripts.map(s => s.script),
@@ -86,12 +85,7 @@ app.delete('/api/clear/:userId', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`✅ 백엔드 서버 실행 중: http://localhost:${PORT}`);
-    console.log(`📡 WPF 엔드포인트: POST /api/execute`);
-    console.log(`🎮 로블록스 엔드포인트: GET /api/get-scripts/:userId`);
-});
+app.listen(PORT);
 
 setInterval(() => {
     const now = Date.now();
@@ -104,9 +98,7 @@ setInterval(() => {
         });
         
         if (filtered.length !== scripts.length) {
-            console.log(`[${userId}] ${scripts.length - filtered.length}개 오래된 스크립트 제거`);
             pendingScripts.set(userId, filtered);
         }
     });
-
 }, 10 * 60 * 1000);
