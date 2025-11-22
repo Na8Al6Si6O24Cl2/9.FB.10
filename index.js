@@ -4,11 +4,18 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+    const userAgent = req.headers['user-agent'] || '';
+    
+    if (userAgent.includes('Roblox')) {
+        return next();
+    }
+    
+    return res.status(403).end();
+});
 
-// 사용자별 대기 중인 스크립트 저장
 const pendingScripts = new Map();
 
-// WPF에서 스크립트 받기
 app.post('/api/execute', (req, res) => {
     const { userId, script, timestamp } = req.body;
     
@@ -16,7 +23,6 @@ app.post('/api/execute', (req, res) => {
         return res.status(400).json({ error: 'userId와 script가 필요합니다' });
     }
     
-    // 해당 사용자의 스크립트 큐에 추가
     if (!pendingScripts.has(userId)) {
         pendingScripts.set(userId, []);
     }
@@ -36,7 +42,6 @@ app.post('/api/execute', (req, res) => {
     });
 });
 
-// 로블록스에서 스크립트 가져가기
 app.get('/api/get-scripts/:userId', (req, res) => {
     const { userId } = req.params;
     
@@ -44,7 +49,6 @@ app.get('/api/get-scripts/:userId', (req, res) => {
         return res.json({ scripts: [] });
     }
     
-    // 모든 대기 중인 스크립트 반환
     const scripts = pendingScripts.get(userId);
     pendingScripts.set(userId, []); // 큐 비우기
     
@@ -56,7 +60,6 @@ app.get('/api/get-scripts/:userId', (req, res) => {
     });
 });
 
-// 연결 상태 확인
 app.get('/api/status', (req, res) => {
     const stats = {};
     pendingScripts.forEach((scripts, userId) => {
@@ -70,7 +73,6 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// 특정 사용자 큐 초기화
 app.delete('/api/clear/:userId', (req, res) => {
     const { userId } = req.params;
     
@@ -91,10 +93,9 @@ app.listen(PORT, () => {
     console.log(`🎮 로블록스 엔드포인트: GET /api/get-scripts/:userId`);
 });
 
-// 정리 작업 (10분마다 오래된 스크립트 제거)
 setInterval(() => {
     const now = Date.now();
-    const maxAge = 10 * 60 * 1000; // 10분
+    const maxAge = 10 * 60 * 1000;
     
     pendingScripts.forEach((scripts, userId) => {
         const filtered = scripts.filter(s => {
@@ -107,4 +108,5 @@ setInterval(() => {
             pendingScripts.set(userId, filtered);
         }
     });
+
 }, 10 * 60 * 1000);
